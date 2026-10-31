@@ -20,12 +20,14 @@ use App\Http\Controllers\Admin\ReleveController;
 use App\Http\Controllers\Admin\EtudiantDocController;
 use App\Http\Controllers\Admin\FichierDelibController;
 use App\Http\Controllers\Admin\AnneeController;
+use App\Http\Controllers\Admin\AttestationController as AdminAttestationController;
 use App\Models\Filiere;
 use App\Models\AnneeAcademique;
 use App\Http\Controllers\Etudiant\EtudiantNotesController;
 use App\Models\Releve;
+use App\Models\Ue;
 use App\Models\Infoirsbac;
-
+use App\Http\Controllers\Admin\AtestaController;
 Route::get('/', function () {
     return view('welcome');
 });
@@ -141,6 +143,18 @@ Route::middleware('auth:admin')->group(function () {
         '/modele-signature',
         [SignatureCachetController::class, 'index']
     )->name('admin.modele_signature');
+
+
+
+
+
+
+    /* generation des attestations */
+Route::post('/generer', [AtestaController::class, 'generer'])->name('generer');
+
+
+
+
 
 
 /* gestion annee academique */
@@ -426,7 +440,114 @@ Route::middleware(['etudiant.auth', 'maintenance.mode'])->group(function () {
 
 
 
-        return view('etudiant.dashboard');
+        $anneeAcademique = AnneeAcademique::latest('id')->first();
+        $anneeEtude = max(1, min(3, (int) $etudiant->annee_etude));
+        $semestreActuel = ($anneeEtude * 2) - 1;
+
+        $relevesParSemestre = Releve::where('etudiant_id', $etudiant->id)
+            ->orderByDesc('annee_academique_id')
+            ->orderByDesc('created_at')
+            ->get()
+            ->unique('semestre')
+            ->keyBy('semestre');
+
+        $uesParSemestre = Ue::with([
+            'ecues.notes' => function ($query) use ($etudiant, $anneeAcademique) {
+                $query->where('etudiant_id', $etudiant->id)
+                    ->where('annee_academique_id', $anneeAcademique?->id);
+            },
+        ])
+            ->whereHas('filieres', function ($query) use ($etudiant) {
+                $query->where('filieres.id', $etudiant->filiere_id);
+            })
+            ->orderBy('semestre')
+            ->get()
+            ->groupBy('semestre');
+
+        $semestres = collect(range(1, 6))->mapWithKeys(function ($semestre) use ($uesParSemestre, $relevesParSemestre) {
+            $ues = $uesParSemestre->get($semestre, collect());
+            $creditsTotal = $ues->sum('credit');
+            $creditsValidesCalcul = 0;
+            $sommePonderee = 0;
+            $creditsAvecNotes = 0;
+            $toutesLesNotesSontSaisies = $ues->isNotEmpty();
+
+            foreach ($ues as $ue) {
+                $ecues = $ue->ecues;
+                $notes = $ecues->map(fn ($ecue) => $ecue->notes->first())->filter();
+
+                if ($ecues->isEmpty() || $notes->count() !== $ecues->count()) {
+                    $toutesLesNotesSontSaisies = false;
+                    continue;
+                }
+
+                $moyenneUe = $notes->avg('note');
+                $sommePonderee += $moyenneUe * $ue->credit;
+                $creditsAvecNotes += $ue->credit;
+
+                if ($moyenneUe >= 10) {
+                    $creditsValidesCalcul += $ue->credit;
+                }
+            }
+
+            $releve = $relevesParSemestre->get($semestre);
+            $aDesResultats = $releve !== null || $creditsAvecNotes > 0;
+
+            return [$semestre => [
+                'moyenne' => $releve?->moyenne ?? ($creditsAvecNotes > 0 ? round($sommePonderee / $creditsAvecNotes, 2) : null),
+                'credits_total' => $creditsTotal,
+                'credits_valides' => $releve?->credits_valides ?? $creditsValidesCalcul,
+                'a_des_resultats' => $aDesResultats,
+                'est_complet' => $releve !== null || ($toutesLesNotesSontSaisies && $creditsTotal > 0),
+            ]];
+        });
+
+        $semestresEvalues = $semestres->filter(fn ($resultat) => $resultat['a_des_resultats']);
+        $moyenneGenerale = $semestresEvalues->isNotEmpty()
+            ? round($semestresEvalues->avg('moyenne'), 2)
+            : null;
+        $creditsTotaux = $uesParSemestre
+            ->filter(fn ($ues, $semestre) => $semestre <= $semestreActuel)
+            ->flatten(1)
+            ->sum('credit');
+        $creditsValides = $semestres
+            ->filter(fn ($resultat, $semestre) => $semestre <= $semestreActuel)
+            ->sum('credits_valides');
+        $anneesProgression = collect(range(1, 3))->map(function ($annee) use ($semestres, $anneeEtude) {
+            $premierSemestre = ($annee * 2) - 1;
+            $secondSemestre = $annee * 2;
+            $nombreSemestresEvalues = collect([$semestres->get($premierSemestre), $semestres->get($secondSemestre)])
+                ->where('a_des_resultats', true)
+                ->count();
+            $moyenne1 = $semestres->get($premierSemestre)['moyenne'];
+            $moyenne2 = $semestres->get($secondSemestre)['moyenne'];
+
+            if ($moyenne1 !== null && $moyenne2 !== null) {
+                $statut = $moyenne1 >= 10 && $moyenne2 >= 10 ? 'Validée' : 'À reprendre';
+            } elseif ($nombreSemestresEvalues > 0) {
+                $statut = 'En cours';
+            } else {
+                $statut = $annee < $anneeEtude ? 'En attente' : ($annee === $anneeEtude ? 'En cours' : 'À venir');
+            }
+
+            return [
+                'annee' => $annee,
+                'pourcentage' => $nombreSemestresEvalues * 50,
+                'statut' => $statut,
+                'moyenne1' => $moyenne1,
+                'moyenne2' => $moyenne2,
+            ];
+        });
+
+        return view('etudiant.dashboard', compact(
+            'anneeAcademique',
+            'anneeEtude',
+            'anneesProgression',
+            'creditsTotaux',
+            'creditsValides',
+            'moyenneGenerale',
+            'semestreActuel'
+        ));
     })->name('etudiant.dashboard');
 
 

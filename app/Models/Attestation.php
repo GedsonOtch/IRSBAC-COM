@@ -17,6 +17,15 @@ class Attestation extends Model
         'annee_academique'
     ];
 
+    protected $casts = [
+        'date_deliberation' => 'date',
+        'date_document' => 'date'
+    ];
+
+      public function getNumeroFormateAttribute() : string 
+    {
+return str_pad($this->numero_attestation, 4, '0', STR_PAD_LEFT);
+    }
     public function etudiant()
     {
         return $this->belongsTo(

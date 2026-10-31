@@ -114,7 +114,7 @@
             
             <!-- Stats Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 fade-in">
-                <!-- Moyenne Générale -->
+                <!-- Documents Disponibles -->
                 <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover-lift">
                     <div class="flex items-center justify-between mb-4">
                         <div class="p-2 bg-blue-50 rounded-lg">
@@ -122,8 +122,8 @@
                         </div>
                         
                     </div>
-                    <p class="text-sm text-gray-500 mb-1">Documents disponibles</p>
-                    <p class="text-2xl font-bold text-gray-900">11.89<span class="text-sm font-normal text-gray-400">/20</span></p>
+                    <p class="text-sm text-gray-500 mb-1">Moyenne générale</p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $moyenneGenerale !== null ? number_format($moyenneGenerale, 2, ',', ' ') : '—' }}@if($moyenneGenerale !== null)<span class="text-sm font-normal text-gray-400">/20</span>@endif</p>
                 </div>
 
                 <!-- Semestre Actuel -->
@@ -135,7 +135,7 @@
                         <span class="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded-full">En cours</span>
                     </div>
                     <p class="text-sm text-gray-500 mb-1">Semestre Actuel</p>
-                    <p class="text-2xl font-bold text-gray-900">Semestre 6</p>
+                    <p class="text-2xl font-bold text-gray-900">Semestre {{ $semestreActuel }}</p>
                 </div>
 
                 <!-- Crédits Validés -->
@@ -144,10 +144,10 @@
                         <div class="p-2 bg-amber-50 rounded-lg">
                             <i data-lucide="award" class="w-5 h-5 text-amber-600"></i>
                         </div>
-                        <span class="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-full">100%</span>
+                        <span class="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-full">{{ $creditsTotaux > 0 ? round(($creditsValides / $creditsTotaux) * 100) : 0 }}%</span>
                     </div>
                     <p class="text-sm text-gray-500 mb-1">Crédits Validés</p>
-                    <p class="text-2xl font-bold text-gray-900">18<span class="text-sm font-normal text-gray-400">/18</span></p>
+                    <p class="text-2xl font-bold text-gray-900">{{ $creditsValides }}<span class="text-sm font-normal text-gray-400">/{{ $creditsTotaux }}</span></p>
                 </div>
 
                 <!-- Statut -->
@@ -156,7 +156,7 @@
                         <div class="p-2 bg-emerald-50 rounded-lg">
                             <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600"></i>
                         </div>
-                        <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">Actif</span>
+                        <span class="text-xs font-medium {{ auth('etudiant')->user()->est_en_regle ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50' }} px-2 py-1 rounded-full">{{ auth('etudiant')->user()->est_en_regle ? 'En règle' : 'À régulariser' }}</span>
                     </div>
                     <p class="text-sm text-gray-500 mb-1">Statut Académique</p>
                     <p class="text-2xl font-bold {{auth('etudiant')->user()->est_en_regle ? ' text-emerald-600' : ' text-red-500'}}">{{ auth('etudiant')->user()->est_en_regle ? 'En règle' : 'Non en règle' }}</p>
@@ -168,10 +168,9 @@
                 <!-- Profile Card -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-1">
                     <div class="text-center">
-                        <img src="{{ auth()->guard('etudiant')->user()->photo_url }}
-                        " alt="Profile" class="w-24 h-24 rounded-full mx-auto object-cover border-4 border-primary-50 shadow-md">
+                        <img src="{{ auth()->guard('etudiant')->user()->photo_url ?: asset('storage/logo_irsbac/logo.png') }}" alt="Profile" class="w-24 h-24 rounded-full mx-auto object-cover border-4 border-primary-50 shadow-md">
                         <h3 class="mt-4 text-lg font-bold text-gray-900"> {{ auth('etudiant')->user()->prenom }} {{ auth('etudiant')->user()->nom }}</h3>
-                        <p class="text-sm text-gray-500">Étudiant en Licence Professionnelle</p>
+                        <p class="text-sm text-gray-500">{{ auth('etudiant')->user()->filiere->nom ?? 'Filière non renseignée' }}</p>
                     </div>
                     <div class="mt-6 space-y-3">
                         <div class="flex items-center justify-between py-2 border-b border-gray-50">
@@ -180,7 +179,7 @@
                         </div>
                         <div class="flex items-center justify-between py-2 border-b border-gray-50">
                             <span class="text-sm text-gray-500 flex items-center gap-2"><i data-lucide="book-open" class="w-4 h-4"></i> Filière</span>
-                            <span class="text-sm font-semibold text-gray-900 text-right">{{ auth('etudiant')->user()->filiere->nom }}</span>
+                            <span class="text-sm font-semibold text-gray-900 text-right">{{ auth('etudiant')->user()->filiere->nom ?? 'Non renseignée' }}</span>
                         </div>
                         <div class="flex items-center justify-between py-2 border-b border-gray-50">
                             <span class="text-sm text-gray-500 flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4"></i> Année d'étude</span>
@@ -188,7 +187,7 @@
                         </div>
                         <div class="flex items-center justify-between py-2">
                             <span class="text-sm text-gray-500 flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4"></i> Année Acad.</span>
-                            <span class="text-sm font-semibold text-gray-900">2024-2025</span>
+                            <span class="text-sm font-semibold text-gray-900">{{ $anneeAcademique?->libelle ?? 'Non définie' }}</span>
                         </div>
                     </div>
                     <a href="{{ route('etudiant.profil') }}">
@@ -201,54 +200,30 @@
                 <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg font-bold text-gray-900">Progression du cursus (3 ans / 6 semestres)</h3>
-                        <span class="text-sm text-gray-500">Cycle Licence BAPES</span>
+                        <span class="text-sm text-gray-500">{{ auth('etudiant')->user()->filiere->nom ?? 'Parcours académique' }}</span>
                     </div>
                     
                     <div class="space-y-4">
-                        
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm font-semibold text-gray-700">1ère Année - Semestres 1 & 2</span>
-                                <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">En attente</span>
+                        @foreach($anneesProgression as $progression)
+                            @php
+                                $couleurStatut = $progression['statut'] === 'Validée'
+                                    ? 'text-emerald-600 bg-emerald-50'
+                                    : ($progression['statut'] === 'À reprendre' ? 'text-red-600 bg-red-50' : 'text-gray-600 bg-gray-100');
+                            @endphp
+                            <div>
+                                <div class="flex items-center justify-between mb-2 gap-3">
+                                    <span class="text-sm font-semibold text-gray-700">{{ $progression['annee'] }}{{ $progression['annee'] === 1 ? 'ère' : 'ème' }} année - Semestres {{ ($progression['annee'] * 2) - 1 }} & {{ $progression['annee'] * 2 }}</span>
+                                    <span class="text-xs font-medium {{ $couleurStatut }} px-2 py-1 rounded-full">{{ $progression['statut'] }}</span>
+                                </div>
+                                <div class="w-full bg-gray-100 rounded-full h-2.5">
+                                    <div class="bg-emerald-500 h-2.5 rounded-full transition-all" style="width: {{ $progression['pourcentage'] }}%"></div>
+                                </div>
+                                <div class="flex justify-between mt-1">
+                                    <span class="text-xs text-gray-500">Moy. S{{ ($progression['annee'] * 2) - 1 }} : {{ $progression['moyenne1'] !== null ? number_format($progression['moyenne1'], 2, ',', ' ') : '—' }}</span>
+                                    <span class="text-xs text-gray-500">Moy. S{{ $progression['annee'] * 2 }} : {{ $progression['moyenne2'] !== null ? number_format($progression['moyenne2'], 2, ',', ' ') : '—' }}</span>
+                                </div>
                             </div>
-                            <div class="w-full bg-gray-100 rounded-full h-2.5">
-                                <div class="bg-emerald-500 h-2.5 rounded-full" style="width: 00%"></div>
-                            </div>
-                            <div class="flex justify-between mt-1">
-                                <span class="text-xs text-gray-500">Moy. S1: </span>
-                                <span class="text-xs text-gray-500">Moy. S2:</span>
-                            </div>
-                        </div>
-
-                         
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm font-semibold text-gray-700">2ème Année - Semestres 3 & 4</span>
-                                <span class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">En attente</span>
-                            </div>
-                            <div class="w-full bg-gray-100 rounded-full h-2.5">
-                                <div class="bg-emerald-500 h-2.5 rounded-full" style="width: 00%"></div>
-                            </div>
-                            <div class="flex justify-between mt-1">
-                                <span class="text-xs text-gray-500">Moy. S3: </span>
-                                <span class="text-xs text-gray-500">Moy. S4: </span>
-                            </div>
-                        </div>
-
-                         
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-sm font-semibold text-gray-700">3ème Année - Semestres 5 & 6</span>
-                                <span class="text-xs font-medium text-emerald-600 bg-amber-50 px-2 py-1 rounded-full">en attente</span>
-                            </div>
-                            <div class="w-full bg-gray-100 rounded-full h-2.5">
-                                <div class="bg-emerald-500 h-2.5 rounded-full" style="width: 50%"></div>
-                            </div>
-                            <div class="flex justify-between mt-1">
-                                <span class="text-xs text-gray-500">Moy. </span>
-                                <span class="text-xs text-gray-400">Moy. S6: 11.89</span>
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
 
                 
@@ -272,59 +247,10 @@
 
             <!-- Footer -->
             <footer class="text-center py-6 text-sm text-gray-500">
-                <p>© 2026 IRSBAC - Institut Régional Supérieur des Beaux-Arts, de la Culture et de la Communication. Tous droits réservés.</p>
+                <p>© {{ now()->year }} IRSBAC - Institut Régional Supérieur des Beaux-Arts, de la Culture et de la Communication. Tous droits réservés.</p>
                 <p class="mt-1">Parakou, Bénin • <a href="#" class="text-primary-600 hover:underline">Mentions légales</a> • <a href="#" class="text-primary-600 hover:underline">Support technique</a></p>
             </footer>
         </main>
-    </div>
-
-    <!-- QR Verification Modal -->
-    <div id="qrModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeQrModal()"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 fade-in">
-            <button onclick="closeQrModal()" class="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-            
-            <div class="text-center mb-6">
-                <div class="inline-flex p-3 bg-primary-50 rounded-full mb-4">
-                    <i data-lucide="scan-line" class="w-6 h-6 text-primary-600"></i>
-                </div>
-                <h3 class="text-xl font-bold text-gray-900">Vérification d'authenticité</h3>
-                <p class="text-sm text-gray-500 mt-1">Scannez le QR Code ou entrez le code du document</p>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Code du document</label>
-                    <input type="text" id="qrCodeInput" placeholder="Ex: IRSBAC-2024-LM-0042-S1" class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm font-mono">
-                </div>
-                
-                <button onclick="verifyDocument()" class="w-full py-3 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors flex items-center justify-center gap-2">
-                    <i data-lucide="shield-check" class="w-4 h-4"></i> Vérifier le document
-                </button>
-
-                <!-- Verification Result -->
-                <div id="verifyResult" class="hidden p-4 rounded-lg border">
-                    <div class="flex items-start gap-3">
-                        <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 mt-0.5"></i>
-                        <div>
-                            <p class="font-semibold text-emerald-800">Document authentique</p>
-                            <p class="text-sm text-emerald-700 mt-1">Ce document a été émis par l'IRSBAC et est officiellement certifié.</p>
-                            <div class="mt-2 pt-2 border-t border-emerald-200 text-xs text-emerald-700 space-y-1">
-                                <p><strong>Étudiant:</strong> Grâce EYITAYO</p>
-                                <p><strong>Document:</strong> Relevé de Notes S1</p>
-                                <p><strong>Émis le:</strong> 15 Juin 2024</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-6 pt-4 border-t border-gray-100 text-center">
-                <p class="text-xs text-gray-500">Tous les documents officiels IRSBAC comportent un QR Code de vérification unique.</p>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -339,36 +265,6 @@
             overlay.classList.toggle('hidden');
         }
 
-        // QR Modal
-        function openQrModal() {
-            const modal = document.getElementById('qrModal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            document.getElementById('verifyResult').classList.add('hidden');
-            document.getElementById('qrCodeInput').value = '';
-        }
-
-        function closeQrModal() {
-            const modal = document.getElementById('qrModal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
-        function verifyDocument() {
-            const code = document.getElementById('qrCodeInput').value.trim();
-            const resultDiv = document.getElementById('verifyResult');
-            
-            // Simulate verification
-            resultDiv.classList.remove('hidden');
-            resultDiv.className = 'p-4 rounded-lg border bg-emerald-50 border-emerald-200 fade-in';
-        }
-
-        // Close modal on Escape key
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeQrModal();
-            }
-        });
     </script>
 </body>
 </html>

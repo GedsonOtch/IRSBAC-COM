@@ -755,7 +755,7 @@
             <div id="attestationContent">
 
                 <form
-                    action="{{ route('attestations.generer') }}"
+                    action="{{ route('generer') }}"
                     method="POST">
 
                     @csrf
